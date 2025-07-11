@@ -1,26 +1,21 @@
 # Etapa 1: Build del frontend
-FROM node:16 as build-stage
-
+FROM node:lts AS build-stage
 WORKDIR /app
-
-COPY package*.json ./
-RUN npm install
 COPY . .
+RUN npm install
 RUN npm run build
 
-# Etapa 2: Nginx para servir frontend
-FROM nginx:alpine
+# Etapa 2: NGINX para servir
+FROM nginx:stable-alpine AS production-stage
 
-# Argumento de backend dinámico
-ARG API_BASE_URL
-ENV API_BASE_URL=${API_BASE_URL}
-
-# Copiar build generado
+# Copiar el build generado
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 
-# Copiar plantilla nginx y reemplazar la variable
-COPY nginx.template.conf /etc/nginx/templates/nginx.conf.template
-RUN envsubst '${API_BASE_URL}' < /etc/nginx/templates/nginx.conf.template > /etc/nginx/conf.d/default.conf
+# Copiar la plantilla NGINX
+COPY nginx.template.conf /etc/nginx/conf.d/default.conf
 
+# Exponer el puerto
 EXPOSE 80
+
+# Comando por defecto
 CMD ["nginx", "-g", "daemon off;"]
