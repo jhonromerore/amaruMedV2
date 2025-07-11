@@ -1,0 +1,41 @@
+trigger:
+- develop
+
+pr: none
+
+variables:
+  IMAGE_TAG: $(Build.BuildId)
+  IMAGE_NAME: frontamarumed
+  ACR_NAME: amarumedcontainer.azurecr.io
+  DOCKERFILE_PATH: ./Dockerfile  # Asegúrate de que esté bien esta ruta
+
+stages:
+- stage: Build_Push_Deploy
+  displayName: Build → Push → Deploy
+  jobs:
+  - job: BuildPushDeploy
+    displayName: Build & Deploy Frontend
+    pool:
+      vmImage: ubuntu-22.04
+
+    steps:
+    - checkout: self
+
+    # 1️⃣ Build and push Docker image to ACR
+    - task: Docker@2
+      displayName: Build and Push to ACR
+      inputs:
+        containerRegistry: "amarumed-frontend-acr-service-connection"  # <--- nombre del Service Connection
+        repository: $(IMAGE_NAME)
+        command: buildAndPush
+        Dockerfile: $(DOCKERFILE_PATH)
+        tags: |
+          $(IMAGE_TAG)
+
+    # 2️⃣ Deploy image to Azure Web App for Containers
+    - task: AzureWebAppContainer@1
+      displayName: Deploy to Azure Web App
+      inputs:
+        azureSubscription: "amarumed-frontend-resource-manager"  # <--- nombre del Service Connection ARM
+        appName: "amarumed-frontend-webapp"                      # <--- nombre exacto del Web App
+        containers: "$(ACR_NAME)/$(IMAGE_NAME):$(IMAGE_TAG)"
